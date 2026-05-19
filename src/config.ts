@@ -10,6 +10,7 @@ export type AutocompactBufferMode = 'enabled' | 'disabled';
 export type ContextValueMode = 'percent' | 'tokens' | 'remaining' | 'both';
 export type UsageValueMode = 'percent' | 'remaining';
 export type GitBranchOverflowMode = 'truncate' | 'wrap';
+export type ToolCountMode = 'recent' | 'cumulative';
 
 /**
  * Controls how the model name is displayed in the HUD badge.
@@ -107,6 +108,7 @@ export interface HudConfig {
     showResetLabel: boolean;
     usageCompact: boolean;
     showTools: boolean;
+    toolCountMode: ToolCountMode;
     showAgents: boolean;
     showTodos: boolean;
     showSessionName: boolean;
@@ -171,6 +173,7 @@ export const DEFAULT_CONFIG: HudConfig = {
     showResetLabel: true,
     usageCompact: false,
     showTools: false,
+    toolCountMode: 'recent',
     showAgents: false,
     showTodos: false,
     showSessionName: false,
@@ -241,6 +244,10 @@ function validateContextValue(value: unknown): value is ContextValueMode {
 
 function validateUsageValue(value: unknown): value is UsageValueMode {
   return value === 'percent' || value === 'remaining';
+}
+
+function validateToolCountMode(value: unknown): value is ToolCountMode {
+  return value === 'recent' || value === 'cumulative';
 }
 
 function validateLanguage(value: unknown): value is Language {
@@ -528,6 +535,9 @@ export function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
     showTools: typeof migrated.display?.showTools === 'boolean'
       ? migrated.display.showTools
       : DEFAULT_CONFIG.display.showTools,
+    toolCountMode: validateToolCountMode(migrated.display?.toolCountMode)
+      ? migrated.display.toolCountMode
+      : DEFAULT_CONFIG.display.toolCountMode,
     showAgents: typeof migrated.display?.showAgents === 'boolean'
       ? migrated.display.showAgents
       : DEFAULT_CONFIG.display.showAgents,

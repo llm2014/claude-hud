@@ -119,6 +119,7 @@ export interface SessionTokenUsage {
 
 export interface TranscriptData {
   tools: ToolEntry[];
+  cumulativeToolCounts?: Record<string, number>;
   agents: AgentEntry[];
   todos: TodoItem[];
   sessionStart?: Date;

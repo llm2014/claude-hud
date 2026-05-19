@@ -2,6 +2,7 @@ import { yellow, green, cyan, label } from './colors.js';
 export function renderToolsLine(ctx) {
     const { tools } = ctx.transcript;
     const colors = ctx.config?.colors;
+    const toolCountMode = ctx.config?.display?.toolCountMode ?? 'recent';
     if (tools.length === 0) {
         return null;
     }
@@ -13,14 +14,25 @@ export function renderToolsLine(ctx) {
         parts.push(`${yellow('◐')} ${cyan(tool.name)}${target ? label(`: ${target}`, colors) : ''}`);
     }
     const toolCounts = new Map();
-    for (const tool of completedTools) {
-        const count = toolCounts.get(tool.name) ?? 0;
-        toolCounts.set(tool.name, count + 1);
+    if (toolCountMode === 'cumulative') {
+        for (const [name, count] of Object.entries(ctx.transcript.cumulativeToolCounts ?? {})) {
+            if (typeof count === 'number' && Number.isFinite(count) && count > 0) {
+                toolCounts.set(name, count);
+            }
+        }
+    }
+    else {
+        for (const tool of completedTools) {
+            const count = toolCounts.get(tool.name) ?? 0;
+            toolCounts.set(tool.name, count + 1);
+        }
     }
     const sortedTools = Array.from(toolCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4);
-    for (const [name, count] of sortedTools) {
+        .sort((a, b) => b[1] - a[1]);
+    const visibleTools = toolCountMode === 'cumulative'
+        ? sortedTools
+        : sortedTools.slice(0, 4);
+    for (const [name, count] of visibleTools) {
         parts.push(`${green('✓')} ${name} ${label(`×${count}`, colors)}`);
     }
     if (parts.length === 0) {

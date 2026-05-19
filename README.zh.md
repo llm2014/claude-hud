@@ -179,6 +179,7 @@ Claude Code → stdin JSON → claude-hud → stdout → 在终端中显示
 | `display.externalUsageFreshnessMs` | number | `300000` | 外部使用率快照允许的最长存活时间，超时后会被忽略 |
 | `display.showTokenBreakdown` | boolean | true | 在高上下文时（85%+）显示 Token 详情 |
 | `display.showTools` | boolean | false | 显示工具活动行 |
+| `display.toolCountMode` | `recent` \| `cumulative` | `recent` | 已完成工具计数方式：按 HUD 最近窗口统计（`recent`）或按解析到的完整 transcript 累计（`cumulative`） |
 | `display.showAgents` | boolean | false | 显示 Agent 活动行 |
 | `display.showTodos` | boolean | false | 显示待办进度行 |
 | `display.showSessionName` | boolean | false | 显示会话 slug 或 `/rename` 设置的自定义标题 |

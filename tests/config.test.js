@@ -459,6 +459,24 @@ test('mergeConfig accepts usageValue=remaining', () => {
   assert.equal(config.display.usageValue, 'remaining');
 });
 
+test('mergeConfig accepts toolCountMode=cumulative', () => {
+  const config = mergeConfig({
+    display: {
+      toolCountMode: 'cumulative',
+    },
+  });
+  assert.equal(config.display.toolCountMode, 'cumulative');
+});
+
+test('mergeConfig falls back to default for invalid toolCountMode', () => {
+  const config = mergeConfig({
+    display: {
+      toolCountMode: 'window',
+    },
+  });
+  assert.equal(config.display.toolCountMode, DEFAULT_CONFIG.display.toolCountMode);
+});
+
 test('mergeConfig falls back to default for invalid usageValue', () => {
   const config = mergeConfig({
     display: {

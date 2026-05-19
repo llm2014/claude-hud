@@ -54,6 +54,7 @@ export const DEFAULT_CONFIG = {
         showResetLabel: true,
         usageCompact: false,
         showTools: false,
+        toolCountMode: 'recent',
         showAgents: false,
         showTodos: false,
         showSessionName: false,
@@ -117,6 +118,9 @@ function validateContextValue(value) {
 }
 function validateUsageValue(value) {
     return value === 'percent' || value === 'remaining';
+}
+function validateToolCountMode(value) {
+    return value === 'recent' || value === 'cumulative';
 }
 function validateLanguage(value) {
     return value === 'en' || value === 'zh';
@@ -370,6 +374,9 @@ export function mergeConfig(userConfig) {
         showTools: typeof migrated.display?.showTools === 'boolean'
             ? migrated.display.showTools
             : DEFAULT_CONFIG.display.showTools,
+        toolCountMode: validateToolCountMode(migrated.display?.toolCountMode)
+            ? migrated.display.toolCountMode
+            : DEFAULT_CONFIG.display.toolCountMode,
         showAgents: typeof migrated.display?.showAgents === 'boolean'
             ? migrated.display.showAgents
             : DEFAULT_CONFIG.display.showAgents,

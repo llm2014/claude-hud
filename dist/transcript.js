@@ -79,6 +79,7 @@ function deserializeTranscriptData(data) {
             startTime: new Date(tool.startTime),
             endTime: tool.endTime ? new Date(tool.endTime) : undefined,
         })),
+        cumulativeToolCounts: data.cumulativeToolCounts ?? {},
         agents: data.agents.map((agent) => ({
             ...agent,
             startTime: new Date(agent.startTime),
@@ -150,6 +151,7 @@ export async function parseTranscript(transcriptPath) {
         return cached;
     }
     const toolMap = new Map();
+    const cumulativeToolCounts = new Map();
     const agentMap = new Map();
     let latestTodos = [];
     const taskIdToIndex = new Map();
@@ -246,6 +248,7 @@ export async function parseTranscript(transcriptPath) {
         }
     }
     result.tools = Array.from(toolMap.values()).slice(-20);
+    result.cumulativeToolCounts = Object.fromEntries(cumulativeToolCounts);
     result.agents = Array.from(agentMap.values()).slice(-10);
     result.todos = latestTodos;
     result.sessionName = customTitle ?? latestSlug;
@@ -369,9 +372,11 @@ function processEntry(entry, toolMap, agentMap, taskIdToIndex, latestTodos, resu
         }
         if (block.type === 'tool_result' && block.tool_use_id) {
             const tool = toolMap.get(block.tool_use_id);
-            if (tool) {
+            if (tool && tool.status === 'running') {
                 tool.status = block.is_error ? 'error' : 'completed';
                 tool.endTime = timestamp;
+                const previousCount = cumulativeToolCounts.get(tool.name) ?? 0;
+                cumulativeToolCounts.set(tool.name, previousCount + 1);
             }
             const agent = agentMap.get(block.tool_use_id);
             if (agent && !agent.background) {

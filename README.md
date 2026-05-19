@@ -191,6 +191,7 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 | `display.externalUsageFreshnessMs` | number | `300000` | Maximum allowed age for the external usage snapshot before it is ignored |
 | `display.showTokenBreakdown` | boolean | true | Show token details at high context (85%+) |
 | `display.showTools` | boolean | false | Show tools activity line |
+| `display.toolCountMode` | `recent` \| `cumulative` | `recent` | How completed tool counts are aggregated: from the recent HUD window (`recent`) or across the full parsed transcript (`cumulative`) |
 | `display.showAgents` | boolean | false | Show agents activity line |
 | `display.showTodos` | boolean | false | Show todos progress line |
 | `display.showSessionName` | boolean | false | Show session slug or custom title from `/rename` |

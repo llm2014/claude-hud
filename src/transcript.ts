@@ -57,6 +57,7 @@ interface SerializedAgentEntry extends Omit<AgentEntry, 'startTime' | 'endTime'>
 
 interface SerializedTranscriptData {
   tools: SerializedToolEntry[];
+  cumulativeToolCounts?: Record<string, number>;
   agents: SerializedAgentEntry[];
   todos: TodoItem[];
   sessionStart?: string;
@@ -135,6 +136,7 @@ function serializeTranscriptData(data: TranscriptData): SerializedTranscriptData
       startTime: tool.startTime.toISOString(),
       endTime: tool.endTime?.toISOString(),
     })),
+    cumulativeToolCounts: data.cumulativeToolCounts,
     agents: data.agents.map((agent) => ({
       ...agent,
       startTime: agent.startTime.toISOString(),
@@ -157,6 +159,7 @@ function deserializeTranscriptData(data: SerializedTranscriptData): TranscriptDa
       startTime: new Date(tool.startTime),
       endTime: tool.endTime ? new Date(tool.endTime) : undefined,
     })),
+    cumulativeToolCounts: data.cumulativeToolCounts ?? {},
     agents: data.agents.map((agent) => ({
       ...agent,
       startTime: new Date(agent.startTime),
@@ -237,6 +240,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   }
 
   const toolMap = new Map<string, ToolEntry>();
+  const cumulativeToolCounts = new Map<string, number>();
   const agentMap = new Map<string, AgentEntry>();
   let latestTodos: TodoItem[] = [];
   const taskIdToIndex = new Map<string, number>();
@@ -335,6 +339,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
     }
   }
   result.tools = Array.from(toolMap.values()).slice(-20);
+  result.cumulativeToolCounts = Object.fromEntries(cumulativeToolCounts);
   result.agents = Array.from(agentMap.values()).slice(-10);
   result.todos = latestTodos;
   result.sessionName = customTitle ?? latestSlug;
@@ -355,6 +360,7 @@ export function _setCreateReadStreamForTests(impl: typeof fs.createReadStream | 
 function processEntry(
   entry: TranscriptLine,
   toolMap: Map<string, ToolEntry>,
+  cumulativeToolCounts: Map<string, number>,
   agentMap: Map<string, AgentEntry>,
   taskIdToIndex: Map<string, number>,
   latestTodos: TodoItem[],
@@ -473,9 +479,11 @@ function processEntry(
 
     if (block.type === 'tool_result' && block.tool_use_id) {
       const tool = toolMap.get(block.tool_use_id);
-      if (tool) {
+      if (tool && tool.status === 'running') {
         tool.status = block.is_error ? 'error' : 'completed';
         tool.endTime = timestamp;
+        const previousCount = cumulativeToolCounts.get(tool.name) ?? 0;
+        cumulativeToolCounts.set(tool.name, previousCount + 1);
       }
 
       const agent = agentMap.get(block.tool_use_id);

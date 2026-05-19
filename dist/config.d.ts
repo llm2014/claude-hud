@@ -4,6 +4,7 @@ export type AutocompactBufferMode = 'enabled' | 'disabled';
 export type ContextValueMode = 'percent' | 'tokens' | 'remaining' | 'both';
 export type UsageValueMode = 'percent' | 'remaining';
 export type GitBranchOverflowMode = 'truncate' | 'wrap';
+export type ToolCountMode = 'recent' | 'cumulative';
 /**
  * Controls how the model name is displayed in the HUD badge.
  *
@@ -70,6 +71,7 @@ export interface HudConfig {
         showResetLabel: boolean;
         usageCompact: boolean;
         showTools: boolean;
+        toolCountMode: ToolCountMode;
         showAgents: boolean;
         showTodos: boolean;
         showSessionName: boolean;
