@@ -261,7 +261,7 @@ export function renderSessionLine(ctx: RenderContext): string {
   }
 
   // Session token usage (cumulative)
-  if (display?.showSessionTokens && ctx.transcript.sessionTokens) {
+  if (display?.showSessionTokens && !display?.showAllTokens && ctx.transcript.sessionTokens) {
     const st = ctx.transcript.sessionTokens;
     const total = st.inputTokens + st.outputTokens + st.cacheCreationTokens + st.cacheReadTokens;
     if (total > 0) {

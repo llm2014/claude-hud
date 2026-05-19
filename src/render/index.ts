@@ -15,6 +15,7 @@ import {
   renderUsageLine,
   renderMemoryLine,
   renderSessionTokensLine,
+  renderAllSessionTokensLine,
   renderSessionTimeLine,
 } from './lines/index.js';
 import { dim, RESET } from './colors.js';
@@ -503,6 +504,13 @@ export function render(ctx: RenderContext): void {
       }
     }
 
+    if (ctx.config?.display?.showAllTokens) {
+      const allTokensLine = renderAllSessionTokensLine(ctx);
+      if (allTokensLine) {
+        lines.push(allTokensLine);
+      }
+    }
+
     if (showSeparators) {
       const firstActivityIndex = renderedLines.findIndex(({ isActivity }) => isActivity);
       if (firstActivityIndex > 0) {
@@ -522,6 +530,13 @@ export function render(ctx: RenderContext): void {
     const headerLines = renderCompact(ctx);
     const activityLines = collectActivityLines(ctx);
     lines = [...headerLines];
+
+    if (ctx.config?.display?.showAllTokens) {
+      const allTokensLine = renderAllSessionTokensLine(ctx);
+      if (allTokensLine) {
+        lines.push(allTokensLine);
+      }
+    }
 
     if (showSeparators && activityLines.length > 0) {
       const maxWidth = Math.max(...headerLines.map(visualLength), 20);

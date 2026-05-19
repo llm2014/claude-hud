@@ -561,6 +561,111 @@ test('parseTranscript accumulates session token usage from assistant messages', 
       cacheCreationTokens: 9000,
       cacheReadTokens: 2000,
     });
+    assert.equal(result.assistantCount, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('parseTranscript deduplicates assistant usage by message id', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-'));
+  const filePath = path.join(dir, 'session-tokens-dedupe.jsonl');
+  const lines = [
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        id: 'msg-1',
+        usage: {
+          input_tokens: 1200,
+          output_tokens: 300,
+          cache_creation_input_tokens: 9000,
+          cache_read_input_tokens: 1500,
+        },
+      },
+    }),
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        id: 'msg-1',
+        usage: {
+          input_tokens: 1200,
+          output_tokens: 300,
+          cache_creation_input_tokens: 9000,
+          cache_read_input_tokens: 1500,
+        },
+      },
+    }),
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        id: 'msg-2',
+        usage: {
+          input_tokens: 800,
+          output_tokens: 200,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 500,
+        },
+      },
+    }),
+  ];
+
+  await writeFile(filePath, lines.join('\n'), 'utf8');
+
+  try {
+    const result = await parseTranscript(filePath);
+    assert.deepEqual(result.sessionTokens, {
+      inputTokens: 2000,
+      outputTokens: 500,
+      cacheCreationTokens: 9000,
+      cacheReadTokens: 2000,
+    });
+    assert.equal(result.assistantCount, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('parseTranscript keeps highest token counters for repeated assistant message id', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-'));
+  const filePath = path.join(dir, 'session-tokens-dedupe-max.jsonl');
+  const lines = [
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        id: 'msg-1',
+        usage: {
+          input_tokens: 1000,
+          output_tokens: 100,
+          cache_creation_input_tokens: 100,
+          cache_read_input_tokens: 50,
+        },
+      },
+    }),
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        id: 'msg-1',
+        usage: {
+          input_tokens: 1000,
+          output_tokens: 120,
+          cache_creation_input_tokens: 100,
+          cache_read_input_tokens: 80,
+        },
+      },
+    }),
+  ];
+
+  await writeFile(filePath, lines.join('\n'), 'utf8');
+
+  try {
+    const result = await parseTranscript(filePath);
+    assert.deepEqual(result.sessionTokens, {
+      inputTokens: 1000,
+      outputTokens: 120,
+      cacheCreationTokens: 100,
+      cacheReadTokens: 80,
+    });
+    assert.equal(result.assistantCount, 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -685,6 +790,7 @@ test('parseTranscript ignores malformed session token values', async () => {
       cacheCreationTokens: 12,
       cacheReadTokens: 1,
     });
+    assert.equal(result.assistantCount, 2);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

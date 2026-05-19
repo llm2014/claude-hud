@@ -122,6 +122,7 @@ export interface TranscriptData {
   cumulativeToolCounts?: Record<string, number>;
   agents: AgentEntry[];
   todos: TodoItem[];
+  assistantCount?: number;
   sessionStart?: Date;
   sessionName?: string;
   lastAssistantResponseAt?: Date;

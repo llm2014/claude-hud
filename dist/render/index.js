@@ -3,7 +3,7 @@ import { renderSessionLine } from './session-line.js';
 import { renderToolsLine } from './tools-line.js';
 import { renderAgentsLine } from './agents-line.js';
 import { renderTodosLine } from './todos-line.js';
-import { renderIdentityLine, renderProjectLine, renderAddedDirsLine, renderGitFilesLine, renderEnvironmentLine, renderPromptCacheLine, renderUsageLine, renderMemoryLine, renderSessionTokensLine, renderSessionTimeLine, } from './lines/index.js';
+import { renderIdentityLine, renderProjectLine, renderAddedDirsLine, renderGitFilesLine, renderEnvironmentLine, renderPromptCacheLine, renderUsageLine, renderMemoryLine, renderSessionTokensLine, renderAllSessionTokensLine, renderSessionTimeLine, } from './lines/index.js';
 import { dim, RESET } from './colors.js';
 import { getTerminalWidth, UNKNOWN_TERMINAL_WIDTH } from '../utils/terminal.js';
 import { codePointCellWidth, isCjkAmbiguousWide } from './width.js';
@@ -407,6 +407,12 @@ export function render(ctx) {
                 lines.push(sessionTokensLine);
             }
         }
+        if (ctx.config?.display?.showAllTokens) {
+            const allTokensLine = renderAllSessionTokensLine(ctx);
+            if (allTokensLine) {
+                lines.push(allTokensLine);
+            }
+        }
         if (showSeparators) {
             const firstActivityIndex = renderedLines.findIndex(({ isActivity }) => isActivity);
             if (firstActivityIndex > 0) {
@@ -424,6 +430,12 @@ export function render(ctx) {
         const headerLines = renderCompact(ctx);
         const activityLines = collectActivityLines(ctx);
         lines = [...headerLines];
+        if (ctx.config?.display?.showAllTokens) {
+            const allTokensLine = renderAllSessionTokensLine(ctx);
+            if (allTokensLine) {
+                lines.push(allTokensLine);
+            }
+        }
         if (showSeparators && activityLines.length > 0) {
             const maxWidth = Math.max(...headerLines.map(visualLength), 20);
             const separatorWidth = terminalWidth ? Math.min(maxWidth, terminalWidth) : maxWidth;

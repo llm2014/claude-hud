@@ -118,6 +118,7 @@ export interface HudConfig {
     showPromptCache: boolean;
     promptCacheTtlSeconds: number;
     showSessionTokens: boolean;
+    showAllTokens: boolean;
     showOutputStyle: boolean;
     showSessionStartDate: boolean;
     showLastResponseAt: boolean;
@@ -183,6 +184,7 @@ export const DEFAULT_CONFIG: HudConfig = {
     showPromptCache: false,
     promptCacheTtlSeconds: 300,
     showSessionTokens: false,
+    showAllTokens: false,
     showOutputStyle: false,
     showSessionStartDate: false,
     showLastResponseAt: false,
@@ -566,6 +568,9 @@ export function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
     showSessionTokens: typeof migrated.display?.showSessionTokens === 'boolean'
       ? migrated.display.showSessionTokens
       : DEFAULT_CONFIG.display.showSessionTokens,
+    showAllTokens: typeof migrated.display?.showAllTokens === 'boolean'
+      ? migrated.display.showAllTokens
+      : DEFAULT_CONFIG.display.showAllTokens,
     showOutputStyle: typeof migrated.display?.showOutputStyle === 'boolean'
       ? migrated.display.showOutputStyle
       : DEFAULT_CONFIG.display.showOutputStyle,

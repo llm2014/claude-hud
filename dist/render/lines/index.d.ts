@@ -5,6 +5,6 @@ export { renderEnvironmentLine } from './environment.js';
 export { renderPromptCacheLine, formatPromptCacheCountdown } from './prompt-cache.js';
 export { renderUsageLine } from './usage.js';
 export { renderMemoryLine } from './memory.js';
-export { renderSessionTokensLine } from './session-tokens.js';
+export { renderSessionTokensLine, renderAllSessionTokensLine } from './session-tokens.js';
 export { renderSessionTimeLine } from './session-time.js';
 //# sourceMappingURL=index.d.ts.map

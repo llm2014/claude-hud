@@ -15,7 +15,7 @@ import { renderUsageLine } from '../dist/render/lines/usage.js';
 import { renderMemoryLine } from '../dist/render/lines/memory.js';
 import { renderIdentityLine } from '../dist/render/lines/identity.js';
 import { renderEnvironmentLine } from '../dist/render/lines/environment.js';
-import { renderSessionTokensLine } from '../dist/render/lines/session-tokens.js';
+import { renderSessionTokensLine, renderAllSessionTokensLine } from '../dist/render/lines/session-tokens.js';
 import { renderSessionTimeLine } from '../dist/render/lines/session-time.js';
 import { getContextColor, getQuotaColor } from '../dist/render/colors.js';
 import { setLanguage } from '../dist/i18n/index.js';
@@ -898,6 +898,60 @@ test('renderToolsLine renders running and completed tools', () => {
   assert.ok(line?.includes('Read'));
   assert.ok(line?.includes('Edit'));
   assert.ok(line?.includes('.../authentication.ts'));
+});
+
+test('renderToolsLine uses cumulative counts when toolCountMode is cumulative', () => {
+  const ctx = baseContext();
+  ctx.config.display.toolCountMode = 'cumulative';
+  ctx.transcript.tools = [
+    {
+      id: 'tool-1',
+      name: 'Read',
+      status: 'completed',
+      startTime: new Date(0),
+      endTime: new Date(0),
+    },
+  ];
+  ctx.transcript.cumulativeToolCounts = {
+    Write: 18,
+    Bash: 5,
+    Edit: 4,
+    Read: 2,
+  };
+
+  const line = stripAnsi(renderToolsLine(ctx) ?? '');
+  assert.ok(line.includes('Write ×18'));
+  assert.ok(line.includes('Bash ×5'));
+  assert.ok(line.includes('Edit ×4'));
+  assert.ok(line.includes('Read ×2'));
+});
+
+test('renderToolsLine shows all completed tool categories in cumulative mode', () => {
+  const ctx = baseContext();
+  ctx.config.display.toolCountMode = 'cumulative';
+  ctx.transcript.tools = [
+    {
+      id: 'tool-1',
+      name: 'Read',
+      status: 'completed',
+      startTime: new Date(0),
+      endTime: new Date(0),
+    },
+  ];
+  ctx.transcript.cumulativeToolCounts = {
+    Write: 18,
+    Bash: 5,
+    Edit: 4,
+    Read: 2,
+    Grep: 1,
+  };
+
+  const line = stripAnsi(renderToolsLine(ctx) ?? '');
+  assert.ok(line.includes('Write ×18'));
+  assert.ok(line.includes('Bash ×5'));
+  assert.ok(line.includes('Edit ×4'));
+  assert.ok(line.includes('Read ×2'));
+  assert.ok(line.includes('Grep ×1'));
 });
 
 test('renderToolsLine truncates long filenames', () => {
@@ -2293,6 +2347,22 @@ test('renderSessionTokensLine returns null when session token display is disable
   assert.equal(renderSessionTokensLine(ctx), null);
 });
 
+test('renderSessionTokensLine renders all tokens when showAllTokens is enabled', () => {
+  const ctx = baseContext();
+  ctx.config.display.showSessionTokens = false;
+  ctx.config.display.showAllTokens = true;
+  ctx.transcript.assistantCount = 3;
+  ctx.transcript.sessionTokens = {
+    inputTokens: 7000,
+    outputTokens: 28000,
+    cacheCreationTokens: 12800000,
+    cacheReadTokens: 4000,
+  };
+
+  const line = stripAnsi(renderAllSessionTokensLine(ctx) ?? '');
+  assert.equal(line, 'Tokens 12.8M (in: 7k, out: 28k, cache read: 4k, cache write: 12.8M, 3 calls)');
+});
+
 test('renderSessionTokensLine renders cumulative session token totals', () => {
   const ctx = baseContext();
   ctx.config.display.showSessionTokens = true;
@@ -2301,6 +2371,21 @@ test('renderSessionTokensLine renders cumulative session token totals', () => {
     outputTokens: 28000,
     cacheCreationTokens: 12800000,
     cacheReadTokens: 0,
+  };
+
+  const line = stripAnsi(renderSessionTokensLine(ctx) ?? '');
+  assert.equal(line, 'Tokens 12.8M (in: 7k, out: 28k, cache: 12.8M)');
+});
+
+test('renderSessionTokensLine keeps cache totals hidden when showAllTokens is disabled', () => {
+  const ctx = baseContext();
+  ctx.config.display.showSessionTokens = true;
+  ctx.config.display.showAllTokens = false;
+  ctx.transcript.sessionTokens = {
+    inputTokens: 7000,
+    outputTokens: 28000,
+    cacheCreationTokens: 12800000,
+    cacheReadTokens: 4000,
   };
 
   const line = stripAnsi(renderSessionTokensLine(ctx) ?? '');

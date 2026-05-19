@@ -24,6 +24,14 @@ function normalizeSessionTokens(tokens) {
         cacheReadTokens: normalizeTokenCount(raw.cacheReadTokens),
     };
 }
+function normalizeUsage(usage) {
+    return {
+        inputTokens: normalizeTokenCount(usage?.input_tokens),
+        outputTokens: normalizeTokenCount(usage?.output_tokens),
+        cacheCreationTokens: normalizeTokenCount(usage?.cache_creation_input_tokens),
+        cacheReadTokens: normalizeTokenCount(usage?.cache_read_input_tokens),
+    };
+}
 function getTranscriptCachePath(transcriptPath, homeDir) {
     const hash = createHash('sha256').update(path.resolve(transcriptPath)).digest('hex');
     return path.join(getHudPluginDir(homeDir), 'transcript-cache', `${hash}.json`);
@@ -58,12 +66,14 @@ function serializeTranscriptData(data) {
             startTime: tool.startTime.toISOString(),
             endTime: tool.endTime?.toISOString(),
         })),
+        cumulativeToolCounts: data.cumulativeToolCounts,
         agents: data.agents.map((agent) => ({
             ...agent,
             startTime: agent.startTime.toISOString(),
             endTime: agent.endTime?.toISOString(),
         })),
         todos: data.todos.map((todo) => ({ ...todo })),
+        assistantCount: data.assistantCount,
         sessionStart: data.sessionStart?.toISOString(),
         sessionName: data.sessionName,
         lastAssistantResponseAt: data.lastAssistantResponseAt?.toISOString(),
@@ -86,6 +96,7 @@ function deserializeTranscriptData(data) {
             endTime: agent.endTime ? new Date(agent.endTime) : undefined,
         })),
         todos: data.todos.map((todo) => ({ ...todo })),
+        assistantCount: typeof data.assistantCount === 'number' ? data.assistantCount : 0,
         sessionStart: data.sessionStart ? new Date(data.sessionStart) : undefined,
         sessionName: data.sessionName,
         lastAssistantResponseAt: data.lastAssistantResponseAt ? new Date(data.lastAssistantResponseAt) : undefined,
@@ -156,6 +167,7 @@ export async function parseTranscript(transcriptPath) {
     let latestTodos = [];
     const taskIdToIndex = new Map();
     const queueCompletionMap = new Map();
+    let assistantCount = 0;
     let latestSlug;
     let customTitle;
     let lastCompactBoundaryAt;
@@ -166,6 +178,7 @@ export async function parseTranscript(transcriptPath) {
         cacheCreationTokens: 0,
         cacheReadTokens: 0,
     };
+    const usageByAssistantMessageId = new Map();
     let parsedCleanly = false;
     try {
         const fileStream = createReadStreamImpl(canonicalTranscriptPath);
@@ -186,11 +199,46 @@ export async function parseTranscript(transcriptPath) {
                 }
                 // Accumulate token usage from assistant messages
                 if (entry.type === 'assistant' && entry.message?.usage) {
-                    const usage = entry.message.usage;
-                    sessionTokens.inputTokens += normalizeTokenCount(usage.input_tokens);
-                    sessionTokens.outputTokens += normalizeTokenCount(usage.output_tokens);
-                    sessionTokens.cacheCreationTokens += normalizeTokenCount(usage.cache_creation_input_tokens);
-                    sessionTokens.cacheReadTokens += normalizeTokenCount(usage.cache_read_input_tokens);
+                    const usage = normalizeUsage(entry.message.usage);
+                    const messageId = typeof entry.message.id === 'string' && entry.message.id.trim().length > 0
+                        ? entry.message.id
+                        : null;
+                    if (!messageId) {
+                        assistantCount += 1;
+                        sessionTokens.inputTokens += usage.inputTokens;
+                        sessionTokens.outputTokens += usage.outputTokens;
+                        sessionTokens.cacheCreationTokens += usage.cacheCreationTokens;
+                        sessionTokens.cacheReadTokens += usage.cacheReadTokens;
+                    }
+                    else {
+                        const previous = usageByAssistantMessageId.get(messageId);
+                        if (!previous) {
+                            assistantCount += 1;
+                            sessionTokens.inputTokens += usage.inputTokens;
+                            sessionTokens.outputTokens += usage.outputTokens;
+                            sessionTokens.cacheCreationTokens += usage.cacheCreationTokens;
+                            sessionTokens.cacheReadTokens += usage.cacheReadTokens;
+                            usageByAssistantMessageId.set(messageId, usage);
+                        }
+                        else {
+                            const inputDelta = Math.max(usage.inputTokens - previous.inputTokens, 0);
+                            const outputDelta = Math.max(usage.outputTokens - previous.outputTokens, 0);
+                            const cacheCreationDelta = Math.max(usage.cacheCreationTokens - previous.cacheCreationTokens, 0);
+                            const cacheReadDelta = Math.max(usage.cacheReadTokens - previous.cacheReadTokens, 0);
+                            sessionTokens.inputTokens += inputDelta;
+                            sessionTokens.outputTokens += outputDelta;
+                            sessionTokens.cacheCreationTokens += cacheCreationDelta;
+                            sessionTokens.cacheReadTokens += cacheReadDelta;
+                            if (inputDelta > 0 || outputDelta > 0 || cacheCreationDelta > 0 || cacheReadDelta > 0) {
+                                usageByAssistantMessageId.set(messageId, {
+                                    inputTokens: Math.max(previous.inputTokens, usage.inputTokens),
+                                    outputTokens: Math.max(previous.outputTokens, usage.outputTokens),
+                                    cacheCreationTokens: Math.max(previous.cacheCreationTokens, usage.cacheCreationTokens),
+                                    cacheReadTokens: Math.max(previous.cacheReadTokens, usage.cacheReadTokens),
+                                });
+                            }
+                        }
+                    }
                 }
                 // Track Claude Code's compact_boundary marker. Both manual (/compact)
                 // and auto compaction emit this system entry with compactMetadata; we
@@ -221,7 +269,7 @@ export async function parseTranscript(transcriptPath) {
                         }
                     }
                 }
-                processEntry(entry, toolMap, agentMap, taskIdToIndex, latestTodos, result);
+                processEntry(entry, toolMap, cumulativeToolCounts, agentMap, taskIdToIndex, latestTodos, result);
             }
             catch {
                 // Skip malformed lines
@@ -251,6 +299,7 @@ export async function parseTranscript(transcriptPath) {
     result.cumulativeToolCounts = Object.fromEntries(cumulativeToolCounts);
     result.agents = Array.from(agentMap.values()).slice(-10);
     result.todos = latestTodos;
+    result.assistantCount = assistantCount;
     result.sessionName = customTitle ?? latestSlug;
     result.sessionTokens = sessionTokens;
     result.lastCompactBoundaryAt = lastCompactBoundaryAt;
@@ -263,7 +312,7 @@ export async function parseTranscript(transcriptPath) {
 export function _setCreateReadStreamForTests(impl) {
     createReadStreamImpl = impl ?? fs.createReadStream;
 }
-function processEntry(entry, toolMap, agentMap, taskIdToIndex, latestTodos, result) {
+function processEntry(entry, toolMap, cumulativeToolCounts, agentMap, taskIdToIndex, latestTodos, result) {
     const timestamp = entry.timestamp ? new Date(entry.timestamp) : new Date();
     const hasValidTimestamp = !Number.isNaN(timestamp.getTime());
     if (!result.sessionStart && entry.timestamp && hasValidTimestamp) {
